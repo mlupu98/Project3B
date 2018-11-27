@@ -12,7 +12,7 @@ blockReference = defaultdict(list)
 
 freeBlocks = set()
 freeInodes = set()
-inodes = {}  # Save pointers to inodes.
+inodes = []  # Save pointers to inodes.
 indirects = set()
 dirents = set()
 
@@ -112,7 +112,7 @@ def check_block(indirection, block_number, inode_number, offset):
 
 
 def checkInodes():
-    for line in inodes.values():
+    for line in inodes:
         for i in range(12, 27):
             if (int(line[i]) != 0):
                 check_block('', line[i], line[1], i - 12)
