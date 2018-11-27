@@ -1,10 +1,14 @@
+#! /usr/local/cs/bin/python3
+
 import csv
 import sys
 
+from collections import defaultdict
 
-# Maintain a set of all free inodes
-# Maintain a set of all free blocks numbers.
-# Matinain
+# Using default dictionary to store references.
+blockReference = defaultdict(list)
+
+# List of various items,
 
 freeBlocks = set()
 freeInodes = set()
@@ -12,11 +16,22 @@ inodes = {}  # Save pointers to inodes.
 indirects = set()
 dirents = set()
 
+# Global Variables
+
+blockSize = 0
+inodeSize = 0
+numBlocks = 0
+numInodes = 0
+blockSize = 0
+inodeSize = 0
+blocksPerGroup = 0
+blocksPerInode = 0
+firstFreeNode = 0
+
 
 def readCSV(inputFile):
     csvFile = open(inputFile, "r")
-    blockSize = 0
-    inodeSize = 0
+    global blockSize, inodeSize, numInodes, blockSize, inodeSize, blocksPerGroup, blocksPerGroup
 
     # Use first string to determine type.
     for line in csvFile:
@@ -26,16 +41,20 @@ def readCSV(inputFile):
         if currentLine[0] == "SUPERBLOCK":
             # FORMAT: superblock, numBlocks, numInodes, blockSize,
             #         inodeSize, blocksPerGroup, blocksPerInode, firstFreeNode
-            blockSize = currentLine[3]
-            inodeSize = currentLine[4]  # Do we need to convert to int?
+            numBlocks = int(currentLine[1])
+            blockSize = int(currentLine[3])
+            numInodes = int(currentLine[2])
+            inodeSize = int(currentLine[4])  # Do we need to convert to int?
+            firstFreeNode = currentLine[7]
+
         elif currentLine[0] == "GROUP":
              # FORMAT: group, groupNum, numBlocks, numInodes, numFreeBlocks,
              # numFreeInodes, freeBitmap, freeInodeBitmap, firstFreeNode
-            numBlocks = currentLine[2]
-            numInodes = currentLine[3]
-            firstFreeNode = currentLine[8]
+            numBlocks = int(currentLine[2])
+            numInodes = int(currentLine[3])
+            firstFreeNode = int(currentLine[8])
             # First Valid Block, crosscheck with block allocations
-            firstValidBlock = firstFreeNode + \
+            firstValidBlock = int(firstFreeNode) + \
                 inodeSize * numInodes / blockSize
         elif currentLine[0] == "BFREE":
             # FORMAT: bfree, numFreeBlocks
@@ -50,7 +69,7 @@ def readCSV(inputFile):
             inodes[currentLine[1]] = currentLine
             # inodeNumber = currentLine[1]
             # fileType = currentLine[2]
-            checkInode(inodeNumber, fileType)
+            # checkInodes(inodeNumber, fileType)
         elif currentLine[0] == "DIRENT":
             indirects.add(currentLine[1])
             checkIndirect()
@@ -73,9 +92,28 @@ def checkInode(inodenumber, fileType):
     return
 
 
+def check_block(indirection, block_number, inode_number, offset):
+    status = ''
+    if (int(block_number) < 0 or int(block_number) > numBlocks - 1):
+        status = 'INVALID'
+    elif (int(block_number) < firstFreeNode):
+        status = 'RESERVED'
+    else:
+        # br = BlockRef(indirection, block_number, inode_number, offset)
+        blockReference[int(block_number)].append(
+            [indirection, inode_number, offset])
+        return
+    if (indirection):
+        print('{} {} BLOCK {} IN INODE {} AT OFFSET {}'
+              .format(status, indirection, block_number, inode_number, offset))
+    else:
+        print('{} BLOCK {} IN INODE {} AT OFFSET {}'
+              .format(status, block_number, inode_number, offset))
+
+
 def checkInodes():
     for line in inodes.values():
-        for i in range(12, 24):
+        for i in range(12, 27):
             if (int(line[i]) != 0):
                 check_block('', line[i], line[1], i - 12)
         if (int(line[24]) != 0):
@@ -112,6 +150,7 @@ def main():
         exit(1)
 
     readCSV(sys.argv[1])
+    checkInodes()
 
 
 if __name__ == '__main__':
