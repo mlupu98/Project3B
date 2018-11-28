@@ -58,12 +58,11 @@ def readCSV(inputFile):
                 inodeSize * numInodes / blockSize
         elif currentLine[0] == "BFREE":
             # FORMAT: bfree, numFreeBlocks
-            freeBlocks.add(currentLine[1])
+            freeBlocks.add(int(currentLine[1]))
         elif currentLine[0] == "IFREE":
             freeInodes.append(int(currentLine[1]))
             #freeInodes.append(currentLine[1])
             # FORMAT: ifree, numFreeInodes
-            #freeInodes.add(currentLine[1])
         elif currentLine[0] == "INODE":
             # FORMAT: inodes, inodeNum, fileType, mode, owner, group, linkCount,
             #         timeOfLastChange, timeOfModTime, timeOfLastAccess,
@@ -96,8 +95,8 @@ def check_block(indirection, block_number, inode_number, offset):
         status = 'RESERVED'
     else:
         # br = BlockRef(indirection, block_number, inode_number, offset)
-        #blockReference[int(block_number)].append(
-            #[indirection, inode_number, offset])
+        appendInfo = [indirection, inode_number, offset]
+        blockReference[int(block_number)].append(appendInfo)
         return
 
 
@@ -137,15 +136,34 @@ def checkIndirects():
     indirectionType = ['', 'INDIRECT', 'DOUBLE INDIRECT', 'TRIPLE INDIRECT']
     for line in indirects:
         check_block(indirectionType[int(line[2])], line[5], line[1], line[3])
-    #blockReference[int(line[5])].append(line[5], line[1], line[3])
+        appendInfo = [line[5], line[1], line[3]]
+        blockReference[int(line[5])].append(appendInfo)
     # Add block reference.
 
 
 def checkAllocation():
-    num = firstValidBlock
-    for block in numBlocks:
-        while num != block and num < 64:  # Why 64?
-            print("UNREFERENCED BLOCK", num)
+    # num = firstValidBlock
+    # for block in blockReference:
+    #     if num > block:
+    #         continue
+    #     while num != block and num < 64:  # Why 64?
+    #         print("UNREFERENCED BLOCK", num)
+    #         num += 1
+    #     num += 1
+    # first valid block or 8, not sure .
+    for blockNum in range(int(firstValidBlock), numBlocks):
+        if (blockNum not in freeBlocks) and (blockNum not in blockReference):
+            print("UNREFERENCED BLOCK", blockNum)
+        # if (50 not in freeBlocks):
+        #     print("Not in freeBlocks", blockNum)
+        # if (blockNum not in blockReference):
+        #     print ("Mot in blockRefernece", blockNum)
+        elif (blockNum in freeBlocks) and (blockNum in blockReference):
+            print("ALLOCATED BLOCK", blockNum, "ON FREELIST")
+        # if (len(blockReference[blockNum]) > 1):
+        #     for ref in blockReference[blockNum]:
+        #         print("DUPLICATE {} BLOCK {} IN INODE {} AT OFFSET {}"
+        #               .format(ref[0], ref[24], ref[25], ref[26]))
 
 
 def main():
@@ -156,6 +174,7 @@ def main():
     readCSV(sys.argv[1])
     checkInodes()
     checkIndirects()
+    checkAllocation()
 
 
 if __name__ == '__main__':
