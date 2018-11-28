@@ -13,7 +13,7 @@ blockReference = defaultdict(list)
 freeBlocks = set()
 freeInodes = set()
 inodes = {}  # Save pointers to inodes.
-indirects = set()
+indirects = []
 dirents = set()
 
 # Global Variables
@@ -27,11 +27,12 @@ inodeSize = 0
 blocksPerGroup = 0
 blocksPerInode = 0
 firstFreeNode = 0
+firstValidBlock = 0
 
 
 def readCSV(inputFile):
     csvFile = open(inputFile, "r")
-    global blockSize, inodeSize, numInodes, blockSize, inodeSize, blocksPerGroup, blocksPerGroup, numBlocks
+    global blockSize, inodeSize, numInodes, blockSize, inodeSize, blocksPerGroup, blocksPerGroup, numBlocks, firstFreeNode, firstValidBlock
 
     # Use first string to determine type.
     for line in csvFile:
@@ -45,7 +46,7 @@ def readCSV(inputFile):
             blockSize = int(currentLine[3])
             numInodes = int(currentLine[2])
             inodeSize = int(currentLine[4])  # Do we need to convert to int?
-            firstFreeNode = currentLine[7]
+            firstFreeNode = int(currentLine[7])
 
         elif currentLine[0] == "GROUP":
              # FORMAT: group, groupNum, numBlocks, numInodes, numFreeBlocks,
@@ -71,11 +72,10 @@ def readCSV(inputFile):
             # fileType = currentLine[2]
             # checkInodes(inodeNumber, fileType)
         elif currentLine[0] == "DIRENT":
-            indirects.add(currentLine[1])
-            checkIndirect()
+            dirents.add(currentLine[1])
         elif currentLine[0] == "INDIRECT":
             # All of these may need type conversions.
-            dirents.add(currentLine[1])
+            indirects.append(currentLine)
     return
 
 
@@ -120,22 +120,19 @@ def checkInodes():
                         line[26], line[1], (256 * 256) + 256 + 12)
 
 
-def addInode(inodeNumber, fileType):
-    freeList = []
-    if fileType == '0':
-        freeList[inodeNumber] = 999999  # Random Number, please change.
-
-    return
-
-
-def checkIndirect():
-    return
+def checkIndirects():
+    indirectionType = ['', 'INDIRECT', 'DOUBLE INDIRECT', 'TRIPLE INDIRECT']
+    for line in indirects:
+        check_block(indirectionType[int(line[2])], line[5], line[1], line[3])
+    blockReference[int(line[5])].add(line[5], line[1], line[3])
+    # Add block reference.
 
 
-def parseInode(fileType):
-    return
-    # if fileType != "f" | | fileType != "d":
-    #     return
+def checkAllocation():
+    num = firstValidBlock
+    for block in numBlocks:
+        while num != block and num < 64:  # Why 64?
+            print("UNREFERENCED BLOCK", num)
 
 
 def main():
@@ -145,6 +142,7 @@ def main():
 
     readCSV(sys.argv[1])
     checkInodes()
+    checkIndirects()
 
 
 if __name__ == '__main__':
