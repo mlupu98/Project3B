@@ -12,7 +12,7 @@ blockReference = defaultdict(list)
 
 freeBlocks = set()
 freeInodes = set()
-inodes = []  # Save pointers to inodes.
+inodes = {}  # Save pointers to inodes.
 indirects = set()
 dirents = set()
 
@@ -31,7 +31,7 @@ firstFreeNode = 0
 
 def readCSV(inputFile):
     csvFile = open(inputFile, "r")
-    global blockSize, inodeSize, numInodes, blockSize, inodeSize, blocksPerGroup, blocksPerGroup
+    global blockSize, inodeSize, numInodes, blockSize, inodeSize, blocksPerGroup, blocksPerGroup, numBlocks
 
     # Use first string to determine type.
     for line in csvFile:
@@ -112,15 +112,14 @@ def check_block(indirection, block_number, inode_number, offset):
 
 
 def checkInodes():
-    for line in inodes:
-        for i in range(12, 27):
+    for line in inodes.values():
+        for i in range(12, 24):
             if (int(line[i]) != 0):
                 check_block('', line[i], line[1], i - 12)
         if (int(line[24]) != 0):
             check_block('INDIRECT', line[24], line[1], 12)
         if (int(line[25]) != 0):
-            check_block('DOUBLE INDIRECT',
-                        line[25], line[1], 256 + 12)
+            check_block('DOUBLE INDIRECT', line[25], line[1], 256 + 12)
         if (int(line[26]) != 0):
             check_block('TRIPLE INDIRECT',
                         line[26], line[1], (256 * 256) + 256 + 12)
