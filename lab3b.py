@@ -87,11 +87,6 @@ def checkBfree():
     return
 
 
-def checkInode(inodenumber, fileType):
-
-    return
-
-
 def check_block(indirection, block_number, inode_number, offset):
     status = ''
     if (int(block_number) < 0 or int(block_number) > numBlocks - 1):
@@ -104,11 +99,11 @@ def check_block(indirection, block_number, inode_number, offset):
             [indirection, inode_number, offset])
         return
     if (indirection):
-        print('{} {} BLOCK {} IN INODE {} AT OFFSET {}'
-              .format(status, indirection, block_number, inode_number, offset))
+        print(status, indirection, 'BLOCK', block_number, 'IN INODE',
+              inode_number, 'AT OFFSET', offset)
     else:
-        print('{} BLOCK {} IN INODE {} AT OFFSET {}'
-              .format(status, block_number, inode_number, offset))
+        print(status, 'BLOCK', block_number, 'IN INODE',
+              inode_number, 'AT OFFSET', offset)
 
 
 def checkInodes():
