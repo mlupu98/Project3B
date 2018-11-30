@@ -14,8 +14,11 @@ freeBlocks = set()
 allocatedInodes = []
 freeInodes = []
 inodes = {}  # Save pointers to inodes.
+parentDict = {}
 indirects = []
-dirents = set()
+references = {}
+inodeReferences = {}
+dirents = []
 
 # Global Variables
 
@@ -25,6 +28,7 @@ numBlocks = 0
 numInodes = 0
 blockSize = 0
 inodeSize = 0
+allocatedOnFree = 0
 freeInodeBeginning = 0
 blocksPerGroup = 0
 blocksPerInode = 0
@@ -68,11 +72,20 @@ def readCSV(inputFile):
             #         timeOfLastChange, timeOfModTime, timeOfLastAccess,
             #         fileSize, blockSize
             inodes[currentLine[1]] = currentLine
+            #inodeReferences[int(currentLine[1])] = int(currentLine[6])
             # inodeNumber = currentLine[1]
             # fileType = currentLine[2]
             # checkInodes(inodeNumber, fileType)
         elif currentLine[0] == "DIRENT":
-            dirents.add(currentLine[1])
+            if int(currentLine[3]) not in parentDict:
+                parentDict[int(currentLine[3])] = int(currentLine[1])
+            name = currentLine[6].split('\n')
+            direntData = [int(currentLine[1]), int(currentLine[3]), name[0]]
+            dirents.append(direntData)
+            if currentLine[3] in references:
+                references[currentLine[3]] += 1
+            else:
+                references[currentLine[3]] = 1
         elif currentLine[0] == "INDIRECT":
             # All of these may need type conversions.
             indirects.append(currentLine)
@@ -107,6 +120,8 @@ def check_block(indirection, block_number, inode_number, offset):
 
 
 def checkInodes():
+    global allocatedOnFree
+
     freeInodeBeginning
     for line in inodes.values():
         for i in range(12, 24):
@@ -121,13 +136,38 @@ def checkInodes():
 
         for entry in freeInodes:
             if int(line[1]) == int(entry):
+                allocatedOnFree = 1
                 print("ALLOCATED INODE", int(line[1]), "ON FREELIST")
 
         allocatedInodes.append(int(line[1]))
 
+        if line[1] in references:
+            if references[line[1]] != int(line[6]):
+                print("INODE", int(line[1]), "HAS", references[line[1]], "LINKS BUT LINKCOUNT IS", int(line[6]))
+        else:
+            print("INODE", int(line[1]), "HAS 0 LINKS BUT LINKCOUNT IS", int(line[6]))
+
     for i in range(freeInodeBeginning, numInodes+1):
         if i not in freeInodes and i not in allocatedInodes:
             print("UNALLOCATED INODE", i, "NOT ON FREELIST")
+
+
+    return
+
+def validAllocatedInodes():
+    #dirent number, inode number, name
+    for line in dirents:
+        if int(line[1]) < 1 or int(line[1]) > numInodes+1:
+            print("DIRECTORY INODE", line[0], "NAME", line[2], "INVALID INODE", line[1])
+        if int(line[1]) in freeInodes and allocatedOnFree == 0:
+            print("DIRECTORY INODE", line[0], "NAME", line[2], "UNALLOCATED INODE", line[1])
+        if line[2] == "'.'":
+            if line[0] != line [1]:
+                print("DIRECTORY INODE", line[0], "NAME '.' LINK TO INODE", line[1], "SHOULD BE", line[0])
+        if line[2] == "'..'":
+            if parentDict[line[0]] != line[1]:
+                print("DIRECTORY INODE", line[0], "NAME '..' LINK TO INODE",line[1], "SHOULD BE", line[0])
+
 
     return
 
@@ -139,6 +179,7 @@ def checkIndirects():
         appendInfo = [line[5], line[1], line[3]]
         blockReference[int(line[5])].append(appendInfo)
     # Add block reference.
+
 
 
 def checkAllocation():
@@ -175,6 +216,7 @@ def main():
     checkInodes()
     checkIndirects()
     checkAllocation()
+    validAllocatedInodes()
 
 
 if __name__ == '__main__':
